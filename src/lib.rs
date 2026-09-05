@@ -22,9 +22,40 @@
 //! assert_eq!(sliced, [2u8, 3]);
 //! ```
 //!
+//! # Comparison
+//!
+//! A tick marks an API of `&[u8]` or [`Bytes`] that [`CowBytes`] provides. A blank marks one it
+//! does not provide, or one that does not apply to that type.
+//!
+//! | Method / trait | `&[u8]` | [`Bytes`] |
+//! | --- | :-: | :-: |
+//! | [`len`](CowBytes::len) / [`is_empty`](CowBytes::is_empty) | ✓ | ✓ |
+//! | [`new`](CowBytes::new) / [`from_static`](CowBytes::from_static) | | ✓ |
+//! | [`slice`](CowBytes::slice) / range indexing | ✓ | ✓ |
+//! | `split_off` / `split_to` / `truncate` / `clear` | | |
+//! | `copy_from_slice` / `slice_ref` / `from_owner` | | |
+//! | `is_unique` / `try_into_mut` | | |
+//! | [`Deref`] to `[u8]` | ✓ | ✓ |
+//! | [`AsRef`] / [`Borrow`] as `[u8]` | ✓ | ✓ |
+//! | [`Clone`] / [`Debug`](core::fmt::Debug) / [`Default`] | ✓ | ✓ |
+//! | [`PartialEq`] / [`Eq`] / [`PartialOrd`] / [`Ord`] / [`Hash`] | ✓ | ✓ |
+//! | [`From`] / [`Into`] conversions | ✓ | ✓ |
+//! | [`IntoIterator`] | ✓ | ✓ |
+//! | [`FromIterator<u8>`](FromIterator) | | ✓ |
+//! | [`Buf`] | ✓ | ✓ |
+//! | `Serialize` / `Deserialize` (`serde` feature) | ✓ | ✓ |
+//! | `AsMut<[u8]>` / [`DerefMut`](core::ops::DerefMut) | | |
+//!
+//! Read-only slice methods (`iter`, `get`, `to_vec`, `split_at`, indexing, …) are reachable
+//! through [`Deref`]. Neither `&[u8]` nor [`Bytes`] offers in-place mutable access, so
+//! [`CowBytes`] exposes [`mutate`](CowBytes::mutate) and [`try_mutate`](CowBytes::try_mutate)
+//! instead, which copy first.
+//!
 //! # Feature flags
 //! - `std` (default): enables `bytes/std`. Disable for `no_std` (requires `alloc`).
 //! - `serde`: implements [`Serialize`](serde::Serialize) and [`Deserialize`](serde::Deserialize).
+//!   Deserializing borrows from the deserializer where the format allows, so a [`CowBytes`]
+//!   field of a derived struct needs `#[serde(borrow)]`.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
