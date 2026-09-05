@@ -7,12 +7,15 @@
 //! }
 //! ```
 //!
-//! Unlike [`Cow<[u8]>`](alloc::borrow::Cow), whose owned side is a [`Vec<u8>`], cloning and slicing a shared value are reference count operations rather than copies.
+//! Unlike [`Cow<[u8]>`](alloc::borrow::Cow), **cloning and slicing a non-borrowed value are reference count operations rather than copies**.
 //!
-//! Unlike [`Bytes`], which can only borrow `&'static` data, an arbitrary slice can be held without copying it, at the cost of a lifetime.
+//! Unlike [`Bytes`], which can only borrow `&'static` data, **an arbitrary slice can be held without copying it**, at the cost of a lifetime.
+//!
+//! # Example
 //!
 //! ```rust
-//! # use cowbytes::CowBytes;
+//! use cowbytes::CowBytes;
+//!
 //! // Borrowing does not allocate.
 //! let borrowed: CowBytes<'_> = CowBytes::from(&[1u8, 2, 3][..]);
 //!
@@ -34,14 +37,14 @@
 //! ```
 //!
 //! # Feature flags
-//! - `std` (default): enables `bytes/std`. Disable for `no_std` (requires `alloc`).
+//! - `std` *(default)* — enables `bytes/std`. Disable for `no_std` (requires `alloc`).
 #![cfg_attr(
     feature = "serde",
-    doc = "- `serde`: implements [`Serialize`](::serde::Serialize) and [`Deserialize`](::serde::Deserialize)."
+    doc = "- `serde` — implements [`Serialize`](::serde::Serialize) and [`Deserialize`](::serde::Deserialize)."
 )]
 #![cfg_attr(
     not(feature = "serde"),
-    doc = "- `serde`: implements `Serialize` and `Deserialize`."
+    doc = "- `serde` — implements `Serialize` and `Deserialize`."
 )]
 #![doc = "  Add `#[serde(borrow)]` to struct fields holding `CowBytes<'a>` to allow"]
 #![doc = "  zero-copy deserialization from input data."]

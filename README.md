@@ -12,7 +12,7 @@ pub enum CowBytes<'a> {
 }
 ```
 
-Unlike `Cow<'a, [u8]>`, whose owned side is a `Vec<u8>`, **cloning and slicing a shared value are reference count operations rather than copies**.
+Unlike `Cow<'a, [u8]>`, **cloning and slicing a non-borrowed value are reference count operations rather than copies**.
 
 Unlike `Bytes`, which can only borrow `&'static` data, **an arbitrary slice can be held without copying it**, at the cost of a lifetime.
 
