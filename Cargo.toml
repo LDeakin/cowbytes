@@ -14,7 +14,7 @@ categories = ["data-structures", "memory-management", "no-std"]
 [features]
 default = ["std"]
 std = ["bytes/std", "serde?/std"]
-serde = ["dep:serde"]
+serde = ["dep:serde", "serde/alloc"]
 
 [dependencies]
 bytes = { version = "1.7.0", default-features = false }
