@@ -5,7 +5,7 @@
 
 A clone-on-write bytes type whose non-borrowed variant is [`bytes::Bytes`](https://docs.rs/bytes/latest/bytes/struct.Bytes.html).
 
-```text
+```rust,ignore
 pub enum CowBytes<'a> {
     Borrowed(&'a [u8]),
     Shared(Bytes),
