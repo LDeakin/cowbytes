@@ -40,10 +40,10 @@ assert_eq!(borrowed, owned);
 let sliced = owned.slice(1..3);
 assert_eq!(sliced, [2u8, 3]);
 
-// `into_owned` hands the allocation back when it is unshared, rather than copying.
+// `into_vec` hands the allocation back when it is unshared, rather than copying.
 let bytes = vec![1u8, 2, 3];
 let ptr = bytes.as_ptr();
-assert_eq!(CowBytes::from(bytes).into_owned().as_ptr(), ptr);
+assert_eq!(CowBytes::from(bytes).into_vec().as_ptr(), ptr);
 ```
 
 ## Feature flags

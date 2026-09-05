@@ -13,7 +13,7 @@
 //! // Borrowed: no allocation.
 //! let borrowed = CowBytes::from(&[1u8, 2, 3][..]);
 //!
-//! // A `Vec` is adopted without copying, and handed back by `into_owned` when unshared.
+//! // A `Vec` is adopted without copying, and handed back by `into_vec` when unshared.
 //! let owned = CowBytes::from(vec![1u8, 2, 3]);
 //! assert_eq!(borrowed, owned);
 //!
@@ -50,12 +50,11 @@
 //! through [`Deref`]. The two ✗ rows are [`Bytes`] APIs that do not generalise to a borrow:
 //! its constructors are covered by [`From`], [`from_static`](CowBytes::from_static) and
 //! [`into_static`](CowBytes::into_static), and its reference count introspection is
-//! meaningless for the borrowed variant — [`into_owned`](CowBytes::into_owned) already yields a
+//! meaningless for the borrowed variant — [`into_vec`](CowBytes::into_vec) already yields a
 //! uniquely owned buffer either way.
 //!
 //! Neither `&[u8]` nor [`Bytes`] offers mutable access to its contents, so [`CowBytes`] exposes
-//! [`mutate`](CowBytes::mutate) and [`try_mutate`](CowBytes::try_mutate) instead, which copy
-//! first.
+//! [`with_mut`](CowBytes::with_mut) instead, which copies first.
 //!
 //! # Feature flags
 //! - `std` (default): enables `bytes/std`. Disable for `no_std` (requires `alloc`).
@@ -97,7 +96,7 @@ pub enum CowBytes<'a> {
     ///
     /// Cloning and slicing these bytes does not copy the underlying buffer. Owned bytes are
     /// represented here too: [`Bytes::from`] takes a [`Vec`] without copying, and
-    /// [`into_owned`](CowBytes::into_owned) hands the allocation back when it is unshared.
+    /// [`into_vec`](CowBytes::into_vec) hands the allocation back when it is unshared.
     Shared(Bytes),
 }
 
@@ -143,10 +142,10 @@ impl<'a> CowBytes<'a> {
         self.as_slice().is_empty()
     }
 
-    /// Returns the bytes as an owned [`Vec`], copying only if they are borrowed.
+    /// Returns the bytes as a [`Vec`], copying only if they are borrowed.
     #[must_use]
     #[inline]
-    pub fn into_owned(self) -> Vec<u8> {
+    pub fn into_vec(self) -> Vec<u8> {
         match self {
             Self::Borrowed(bytes) => bytes.to_vec(),
             // `try_into_mut` only succeeds if the buffer is not shared, so the bytes returned
@@ -160,7 +159,7 @@ impl<'a> CowBytes<'a> {
 
     /// Returns a subslice of the bytes without copying.
     ///
-    /// A subsequent [`into_owned`](CowBytes::into_owned) may have to shift the bytes to the
+    /// A subsequent [`into_vec`](CowBytes::into_vec) may have to shift the bytes to the
     /// front of the buffer, which is still cheaper than copying them here.
     ///
     /// # Panics
@@ -255,7 +254,7 @@ impl<'a> CowBytes<'a> {
 
     /// Convert into a [`CowBytes<'static>`], copying only if the bytes are borrowed.
     ///
-    /// Unlike [`into_owned`](CowBytes::into_owned), shared bytes are retained as-is rather
+    /// Unlike [`into_vec`](CowBytes::into_vec), shared bytes are retained as-is rather
     /// than copied into a [`Vec`].
     #[must_use]
     #[inline]
@@ -266,29 +265,32 @@ impl<'a> CowBytes<'a> {
         }
     }
 
-    /// Applies `f` to the bytes, copying them first if they are borrowed or shared.
+    /// Applies `f` to the bytes, copying them first if they are borrowed or shared, and returns
+    /// whatever `f` returns.
     ///
     /// [`Bytes`] offers no in-place mutable access, so this takes a closure rather than returning
-    /// a mutable reference.
-    #[inline]
-    pub fn mutate(&mut self, f: impl FnOnce(&mut [u8])) {
-        self.try_mutate::<core::convert::Infallible>(|bytes| {
-            f(bytes);
-            Ok(())
-        })
-        .unwrap_or_else(|err| match err {});
-    }
-
-    /// Applies a fallible `f` to the bytes, copying them first if they are borrowed or shared.
+    /// a mutable reference. The bytes are left as `f` mutated them whatever it returns, so a
+    /// fallible `f` may return a [`Result`] without losing its changes.
     ///
-    /// The bytes are left as `f` mutated them even if it returns an error.
+    /// # Examples
+    /// ```
+    /// # use cowbytes::CowBytes;
+    /// let mut bytes = CowBytes::from(&[1u8, 2, 3][..]);
+    /// bytes.with_mut(|bytes| bytes[0] = 9);
+    /// assert_eq!(bytes, [9u8, 2, 3]);
     ///
-    /// # Errors
-    /// Returns the error from `f`.
+    /// // A fallible closure keeps its changes even on the error path.
+    /// let result = bytes.with_mut(|bytes| {
+    ///     bytes[1] = 8;
+    ///     Err::<(), _>("failed")
+    /// });
+    /// assert_eq!(result, Err("failed"));
+    /// assert_eq!(bytes, [9u8, 8, 3]);
+    /// ```
     #[inline]
-    pub fn try_mutate<E>(&mut self, f: impl FnOnce(&mut [u8]) -> Result<(), E>) -> Result<(), E> {
-        // `into_owned` yields a uniquely owned buffer, so the bytes are safe to mutate.
-        let mut bytes = core::mem::replace(self, Self::Borrowed(&[])).into_owned();
+    pub fn with_mut<R>(&mut self, f: impl FnOnce(&mut [u8]) -> R) -> R {
+        // `into_vec` yields a uniquely owned buffer, so the bytes are safe to mutate.
+        let mut bytes = core::mem::replace(self, Self::Borrowed(&[])).into_vec();
         let result = f(&mut bytes);
         *self = Self::Shared(Bytes::from(bytes));
         result
@@ -505,7 +507,7 @@ impl<'a> From<CowBytes<'a>> for Cow<'a, [u8]> {
     fn from(bytes: CowBytes<'a>) -> Self {
         match bytes {
             CowBytes::Borrowed(bytes) => Cow::Borrowed(bytes),
-            bytes @ CowBytes::Shared(_) => Cow::Owned(bytes.into_owned()),
+            bytes @ CowBytes::Shared(_) => Cow::Owned(bytes.into_vec()),
         }
     }
 }
@@ -537,7 +539,7 @@ impl From<CowBytes<'_>> for Bytes {
 impl From<CowBytes<'_>> for Vec<u8> {
     #[inline]
     fn from(bytes: CowBytes<'_>) -> Self {
-        bytes.into_owned()
+        bytes.into_vec()
     }
 }
 
@@ -657,18 +659,18 @@ mod tests {
     }
 
     #[test]
-    fn mutate_promotes_a_borrow() {
+    fn with_mut_promotes_a_borrow() {
         let mut bytes = CowBytes::Borrowed(&[1u8, 2, 3]);
-        bytes.mutate(|bytes| bytes[0] = 9);
+        bytes.with_mut(|bytes| bytes[0] = 9);
         assert_eq!(bytes, [9u8, 2, 3]);
     }
 
     #[test]
-    fn into_owned_reuses_an_unshared_buffer() {
+    fn into_vec_reuses_an_unshared_buffer() {
         // The allocation is handed back rather than copied when it is not shared.
         let bytes = vec![1u8, 2, 3, 4];
         let ptr = bytes.as_ptr() as usize;
-        let owned = CowBytes::from(bytes).into_owned();
+        let owned = CowBytes::from(bytes).into_vec();
         assert_eq!(owned.as_ptr() as usize, ptr);
     }
 
@@ -850,14 +852,17 @@ mod tests {
     }
 
     #[test]
-    fn try_mutate_keeps_changes_on_error() {
+    fn with_mut_keeps_changes_on_error() {
         let mut bytes = CowBytes::from(vec![1u8, 2, 3]);
-        let result: Result<(), &str> = bytes.try_mutate(|bytes| {
+        let result: Result<(), &str> = bytes.with_mut(|bytes| {
             bytes[0] = 9;
             Err("failed")
         });
         assert_eq!(result, Err("failed"));
         assert_eq!(bytes, [9u8, 2, 3]);
+
+        // A non-`Result` return value passes straight through.
+        assert_eq!(bytes.with_mut(|bytes| bytes.len()), 3);
     }
 
     #[cfg(feature = "serde")]

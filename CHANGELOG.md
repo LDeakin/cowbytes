@@ -23,3 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `CowBytes::slice` takes `&self` and `impl RangeBounds<usize>` rather than `self` and
   `Range<usize>`, matching `Bytes::slice`
+- Renamed `into_owned` to `into_vec`, since this crate uses "owned" to mean the `Bytes` variant
+- Replaced `mutate` and `try_mutate` with a single `with_mut<R>`, which returns what the closure
+  returns and so covers the fallible case
