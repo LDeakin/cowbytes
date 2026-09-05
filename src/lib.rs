@@ -34,7 +34,7 @@ use alloc::borrow::Cow;
 use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::hash::{Hash, Hasher};
-use core::ops::{Deref, Range};
+use core::ops::{Deref, RangeBounds};
 
 pub use bytes::Bytes;
 
@@ -53,7 +53,14 @@ pub enum CowBytes<'a> {
     Shared(Bytes),
 }
 
-impl CowBytes<'_> {
+impl<'a> CowBytes<'a> {
+    /// Creates an empty [`CowBytes`] without allocating.
+    #[must_use]
+    #[inline]
+    pub const fn new() -> Self {
+        Self::Borrowed(&[])
+    }
+
     /// Creates a [`CowBytes`] from a static slice without copying or allocating.
     ///
     /// Unlike [`into_static`](CowBytes::into_static) on a borrowed value, this never copies, since
@@ -110,12 +117,23 @@ impl CowBytes<'_> {
     ///
     /// # Panics
     /// Panics if `range` is out of bounds.
+    ///
+    /// # Examples
+    /// ```
+    /// # use cowbytes::CowBytes;
+    /// let bytes = CowBytes::from(&[1u8, 2, 3][..]);
+    /// assert_eq!(bytes.slice(1..), [2u8, 3]);
+    /// assert_eq!(bytes.slice(..2), [1u8, 2]);
+    /// ```
     #[must_use]
     #[inline]
-    pub fn slice(self, range: Range<usize>) -> Self {
+    pub fn slice(&self, range: impl RangeBounds<usize>) -> CowBytes<'a> {
+        // `(Bound, Bound)` implements both `RangeBounds` and `SliceIndex`, so the same
+        // resolved range serves the borrowed and the shared arm.
+        let range = (range.start_bound().cloned(), range.end_bound().cloned());
         match self {
-            Self::Borrowed(bytes) => Self::Borrowed(&bytes[range]),
-            Self::Shared(bytes) => Self::Shared(bytes.slice(range)),
+            Self::Borrowed(bytes) => CowBytes::Borrowed(&bytes[range]),
+            Self::Shared(bytes) => CowBytes::Shared(bytes.slice(range)),
         }
     }
 
@@ -164,7 +182,7 @@ impl CowBytes<'_> {
 impl Default for CowBytes<'_> {
     #[inline]
     fn default() -> Self {
-        Self::Borrowed(&[])
+        Self::new()
     }
 }
 
@@ -369,6 +387,17 @@ mod tests {
         let sliced = CowBytes::from(bytes).slice(1..3);
         assert_eq!(sliced, [2u8, 3]);
         assert_eq!(sliced.as_ptr() as usize, ptr + 1);
+    }
+
+    #[test]
+    fn slice_accepts_any_range_bounds() {
+        let bytes = CowBytes::from(vec![1u8, 2, 3, 4]);
+        assert_eq!(bytes.slice(1..), [2u8, 3, 4]);
+        assert_eq!(bytes.slice(..2), [1u8, 2]);
+        assert_eq!(bytes.slice(..), [1u8, 2, 3, 4]);
+        assert_eq!(bytes.slice(1..=2), [2u8, 3]);
+        // Slicing borrows rather than consumes, so the original is still usable.
+        assert_eq!(bytes.len(), 4);
     }
 
     #[test]
