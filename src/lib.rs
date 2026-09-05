@@ -1,65 +1,40 @@
 //! A clone-on-write bytes type whose non-borrowed variant is [`Bytes`].
 //!
-//! [`CowBytes`] is a [`Cow`](alloc::borrow::Cow)-like enum that is either a borrowed `&[u8]` or
-//! a reference counted [`Bytes`]. It sits between the two types in the standard toolbox:
-//!
-//! - Unlike [`Cow<[u8]>`](alloc::borrow::Cow), whose owned side is a [`Vec<u8>`], cloning and
-//!   slicing a shared value are reference count operations rather than copies.
-//! - Unlike [`Bytes`], which can only borrow `&'static` data, an arbitrary slice can be held
-//!   without copying it, at the cost of a lifetime.
-//!
+//! ```rust,ignore
+//! pub enum CowBytes<'a> {
+//!     Borrowed(&'a [u8]),
+//!     Shared(Bytes),
+//! }
 //! ```
+//!
+//! Unlike [`Cow<[u8]>`](alloc::borrow::Cow), whose owned side is a [`Vec<u8>`], cloning and slicing a shared value are reference count operations rather than copies.
+//!
+//! Unlike [`Bytes`], which can only borrow `&'static` data, an arbitrary slice can be held without copying it, at the cost of a lifetime.
+//!
+//! ```rust
 //! # use cowbytes::CowBytes;
-//! // Borrowed: no allocation.
+//! // Borrowing does not allocate.
 //! let borrowed: CowBytes<'_> = CowBytes::from(&[1u8, 2, 3][..]);
-//!
-//! // A `Vec` is adopted without copying, and handed back by `into_vec` while unshared.
+//! 
+//! // A `Vec` is adopted without copying.
 //! let shared: CowBytes<'_> = CowBytes::from(vec![1u8, 2, 3]);
+//! 
+//! // Equality is by contents, not by variant.
 //! assert_eq!(borrowed, shared);
-//!
+//! 
 //! // Slicing shared bytes keeps the same allocation.
 //! let sliced: CowBytes<'_> = shared.slice(1..3);
 //! assert_eq!(sliced, [2u8, 3]);
+//! 
+//! // `into_vec` hands the allocation back while it is unshared, rather than copying.
+//! let bytes = vec![1u8, 2, 3];
+//! let ptr = bytes.as_ptr();
+//! let owned: Vec<u8> = CowBytes::from(bytes).into_vec();
+//! assert_eq!(owned.as_ptr(), ptr);
 //! ```
-//!
-//! # Comparison
-//!
-//! For each API of `&[u8]` and [`Bytes`]: ✓ means [`CowBytes`] provides it, ✗ means that type
-//! has it but [`CowBytes`] does not, and a blank means it does not apply to that type.
-//!
-//! | Method / trait | `&[u8]` | [`Bytes`] |
-//! | --- | :-: | :-: |
-//! | [`len`](CowBytes::len) / [`is_empty`](CowBytes::is_empty) | ✓ | ✓ |
-//! | range indexing / [`slice`](CowBytes::slice) | ✓ | ✓ |
-//! | [`split_off`](CowBytes::split_off) | ✓ | ✓ |
-//! | [`Deref`] to `[u8]` | ✓ | ✓ |
-//! | [`AsRef`] / [`Borrow`] as `[u8]` | ✓ | ✓ |
-//! | [`Clone`] / [`Debug`](core::fmt::Debug) / [`Default`] | ✓ | ✓ |
-//! | [`PartialEq`] / [`Eq`] / [`PartialOrd`] / [`Ord`] / [`Hash`](core::hash::Hash) | ✓ | ✓ |
-//! | [`From`] / [`Into`] conversions | ✓ | ✓ |
-//! | [`IntoIterator`] | ✓ | ✓ |
-//! | [`Buf`] | ✓ | ✓ |
-//! | `Serialize` / `Deserialize` (`serde` feature) | ✓ | ✓ |
-//! | [`new`](CowBytes::new) / [`from_static`](CowBytes::from_static) | | ✓ |
-//! | [`FromIterator<u8>`](FromIterator) | | ✓ |
-//! | [`split_to`](CowBytes::split_to) / [`truncate`](CowBytes::truncate) / [`clear`](CowBytes::clear) | | ✓ |
-//! | `copy_from_slice` / `slice_ref` / `from_owner` | | ✗ |
-//! | `is_unique` / `try_into_mut` | | ✗ |
-//!
-//! Read-only slice methods (`iter`, `get`, `to_vec`, `split_at`, indexing, …) are reachable
-//! through [`Deref`]. The two ✗ rows are [`Bytes`] APIs that do not generalise to a borrow:
-//! its constructors are covered by [`From`], [`from_static`](CowBytes::from_static) and
-//! [`into_static`](CowBytes::into_static), and its reference count introspection is
-//! meaningless for the borrowed variant — [`into_vec`](CowBytes::into_vec) already yields an
-//! unshared buffer either way.
-//!
-//! Neither `&[u8]` nor [`Bytes`] offers mutable access to its contents, so [`CowBytes`] exposes
-//! [`with_mut`](CowBytes::with_mut) instead, which copies first.
 //!
 //! # Feature flags
 //! - `std` (default): enables `bytes/std`. Disable for `no_std` (requires `alloc`).
-// The `serde` bullet is written twice so that it only links to `serde` when that crate is
-// actually a dependency, which keeps `cargo doc` free of unresolved links either way.
 #![cfg_attr(
     feature = "serde",
     doc = "- `serde`: implements [`Serialize`](::serde::Serialize) and [`Deserialize`](::serde::Deserialize)."

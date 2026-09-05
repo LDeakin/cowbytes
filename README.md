@@ -12,12 +12,9 @@ pub enum CowBytes<'a> {
 }
 ```
 
-`CowBytes` sits between the two types in the standard toolbox:
+Unlike `Cow<'a, [u8]>`, whose owned side is a `Vec<u8>`, **cloning and slicing a shared value are reference count operations rather than copies**.
 
-- Unlike `Cow<'a, [u8]>`, whose owned side is a `Vec<u8>`, **cloning and slicing a shared value are reference count operations rather than copies**.
-- Unlike `Bytes`, which can only borrow `&'static` data, **an arbitrary slice can be held without copying it**, at the cost of a lifetime.
-
-This is useful for zero-copy I/O pipelines, where a buffer may be borrowed from a caller, shared with a cache, or handed to a store, and you would rather not copy it to move between those states.
+Unlike `Bytes`, which can only borrow `&'static` data, **an arbitrary slice can be held without copying it**, at the cost of a lifetime.
 
 ## Example
 
