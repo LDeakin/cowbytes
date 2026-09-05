@@ -255,6 +255,20 @@ impl<'a> CowBytes<'a> {
         self.truncate(0);
     }
 
+    /// Converts into [`Bytes`], copying only if the bytes are borrowed.
+    ///
+    /// # Examples
+    /// ```
+    /// # use cowbytes::{Bytes, CowBytes};
+    /// let bytes = CowBytes::from(&[1u8, 2, 3][..]);
+    /// assert_eq!(bytes.into_bytes(), Bytes::from_static(&[1, 2, 3]));
+    /// ```
+    #[must_use]
+    #[inline]
+    pub fn into_bytes(self) -> Bytes {
+        Bytes::from(self)
+    }
+
     /// Convert into a [`CowBytes<'static>`], copying only if the bytes are borrowed.
     ///
     /// Unlike [`into_vec`](CowBytes::into_vec), shared bytes are retained as-is rather

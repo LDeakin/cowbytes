@@ -123,3 +123,16 @@ fn len_and_is_empty() {
     assert_eq!(CowBytes::from(&[1u8, 2, 3][..]).len(), 3);
     assert!(CowBytes::default().is_empty());
 }
+
+#[test]
+fn into_bytes_copies_only_a_borrow() {
+    let owned = vec![1u8, 2, 3];
+    let ptr = owned.as_ptr() as usize;
+    let shared = CowBytes::from(owned);
+    let bytes = shared.into_bytes();
+    assert_eq!(bytes.as_ptr() as usize, ptr);
+
+    let borrowed = CowBytes::from(&[1u8, 2, 3][..]);
+    let copied = borrowed.into_bytes();
+    assert_eq!(copied, &[1u8, 2, 3][..]);
+}
