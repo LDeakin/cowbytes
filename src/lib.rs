@@ -31,6 +31,7 @@
 //! | --- | :-: | :-: |
 //! | [`len`](CowBytes::len) / [`is_empty`](CowBytes::is_empty) | ✓ | ✓ |
 //! | range indexing / [`slice`](CowBytes::slice) | ✓ | ✓ |
+//! | [`split_off`](CowBytes::split_off) | ✓ | ✓ |
 //! | [`Deref`] to `[u8]` | ✓ | ✓ |
 //! | [`AsRef`] / [`Borrow`] as `[u8]` | ✓ | ✓ |
 //! | [`Clone`] / [`Debug`](core::fmt::Debug) / [`Default`] | ✓ | ✓ |
@@ -41,16 +42,20 @@
 //! | `Serialize` / `Deserialize` (`serde` feature) | ✓ | ✓ |
 //! | [`new`](CowBytes::new) / [`from_static`](CowBytes::from_static) | | ✓ |
 //! | [`FromIterator<u8>`](FromIterator) | | ✓ |
-//! | `split_off` | ✗ | ✗ |
-//! | `split_to` / `truncate` / `clear` | | ✗ |
+//! | [`split_to`](CowBytes::split_to) / [`truncate`](CowBytes::truncate) / [`clear`](CowBytes::clear) | | ✓ |
 //! | `copy_from_slice` / `slice_ref` / `from_owner` | | ✗ |
 //! | `is_unique` / `try_into_mut` | | ✗ |
 //!
 //! Read-only slice methods (`iter`, `get`, `to_vec`, `split_at`, indexing, …) are reachable
-//! through [`Deref`], so the ✗ rows are the ones that would have to return a [`CowBytes`] or
-//! mutate one in place. Neither `&[u8]` nor [`Bytes`] offers mutable access to its contents, so
-//! [`CowBytes`] exposes [`mutate`](CowBytes::mutate) and [`try_mutate`](CowBytes::try_mutate)
-//! instead, which copy first.
+//! through [`Deref`]. The two ✗ rows are [`Bytes`] APIs that do not generalise to a borrow:
+//! its constructors are covered by [`From`], [`from_static`](CowBytes::from_static) and
+//! [`into_static`](CowBytes::into_static), and its reference count introspection is
+//! meaningless for the borrowed variant — [`into_owned`](CowBytes::into_owned) already yields a
+//! uniquely owned buffer either way.
+//!
+//! Neither `&[u8]` nor [`Bytes`] offers mutable access to its contents, so [`CowBytes`] exposes
+//! [`mutate`](CowBytes::mutate) and [`try_mutate`](CowBytes::try_mutate) instead, which copy
+//! first.
 //!
 //! # Feature flags
 //! - `std` (default): enables `bytes/std`. Disable for `no_std` (requires `alloc`).
@@ -178,6 +183,74 @@ impl<'a> CowBytes<'a> {
             Self::Borrowed(bytes) => CowBytes::Borrowed(&bytes[range]),
             Self::Shared(bytes) => CowBytes::Shared(bytes.slice(range)),
         }
+    }
+
+    /// Splits the bytes in two at `at` without copying, returning the bytes at and beyond it.
+    ///
+    /// Afterwards `self` contains `[0, at)`. Follows the signature of [`Bytes::split_off`]
+    /// rather than the range-taking `split_off` on slices.
+    ///
+    /// # Panics
+    /// Panics if `at > len`.
+    ///
+    /// # Examples
+    /// ```
+    /// # use cowbytes::CowBytes;
+    /// let mut bytes = CowBytes::from(vec![1u8, 2, 3]);
+    /// assert_eq!(bytes.split_off(1), [2u8, 3]);
+    /// assert_eq!(bytes, [1u8]);
+    /// ```
+    #[must_use = "use `truncate` to discard the bytes beyond `at`"]
+    #[inline]
+    pub fn split_off(&mut self, at: usize) -> CowBytes<'a> {
+        match self {
+            Self::Borrowed(bytes) => {
+                let (head, tail) = bytes.split_at(at);
+                *bytes = head;
+                CowBytes::Borrowed(tail)
+            }
+            Self::Shared(bytes) => CowBytes::Shared(bytes.split_off(at)),
+        }
+    }
+
+    /// Splits the bytes in two at `at` without copying, returning the bytes before it.
+    ///
+    /// Afterwards `self` contains `[at, len)`.
+    ///
+    /// # Panics
+    /// Panics if `at > len`.
+    #[must_use = "use `advance` from `Buf` to discard the bytes before `at`"]
+    #[inline]
+    pub fn split_to(&mut self, at: usize) -> CowBytes<'a> {
+        match self {
+            Self::Borrowed(bytes) => {
+                let (head, tail) = bytes.split_at(at);
+                *bytes = tail;
+                CowBytes::Borrowed(head)
+            }
+            Self::Shared(bytes) => CowBytes::Shared(bytes.split_to(at)),
+        }
+    }
+
+    /// Shortens the bytes to `len`, without copying and keeping the first `len` of them.
+    ///
+    /// Does nothing if `len` is greater than the current length.
+    #[inline]
+    pub fn truncate(&mut self, len: usize) {
+        match self {
+            Self::Borrowed(bytes) => {
+                if len < bytes.len() {
+                    *bytes = &bytes[..len];
+                }
+            }
+            Self::Shared(bytes) => bytes.truncate(len),
+        }
+    }
+
+    /// Discards all of the bytes.
+    #[inline]
+    pub fn clear(&mut self) {
+        self.truncate(0);
     }
 
     /// Convert into a [`CowBytes<'static>`], copying only if the bytes are borrowed.
@@ -642,6 +715,44 @@ mod tests {
         assert_eq!(&taken[..], &[1u8, 2][..]);
         assert_eq!(taken.as_ptr() as usize, ptr);
         assert_eq!(shared, [3u8, 4]);
+    }
+
+    #[test]
+    fn split_does_not_copy_either_variant() {
+        static DATA: &[u8] = &[1u8, 2, 3, 4];
+
+        let bytes = vec![1u8, 2, 3, 4];
+        let ptr = bytes.as_ptr() as usize;
+        let mut shared = CowBytes::from(bytes);
+        let tail = shared.split_off(1);
+        assert_eq!(shared, [1u8]);
+        assert_eq!(tail, [2u8, 3, 4]);
+        assert_eq!(shared.as_ptr() as usize, ptr);
+        assert_eq!(tail.as_ptr() as usize, ptr + 1);
+
+        let mut borrowed = CowBytes::Borrowed(DATA);
+        let head = borrowed.split_to(1);
+        assert_eq!(head, [1u8]);
+        assert_eq!(borrowed, [2u8, 3, 4]);
+        assert_eq!(head.as_ptr() as usize, DATA.as_ptr() as usize);
+        assert_eq!(borrowed.as_ptr() as usize, DATA.as_ptr() as usize + 1);
+    }
+
+    #[test]
+    fn truncate_and_clear_work_on_both_variants() {
+        let mut borrowed = CowBytes::Borrowed(&[1u8, 2, 3]);
+        borrowed.truncate(5); // A longer length is a no-op.
+        assert_eq!(borrowed, [1u8, 2, 3]);
+        borrowed.truncate(2);
+        assert_eq!(borrowed, [1u8, 2]);
+        borrowed.clear();
+        assert!(borrowed.is_empty());
+
+        let mut shared = CowBytes::from(vec![1u8, 2, 3]);
+        shared.truncate(2);
+        assert_eq!(shared, [1u8, 2]);
+        shared.clear();
+        assert!(shared.is_empty());
     }
 
     #[test]

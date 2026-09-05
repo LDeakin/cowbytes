@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Deserialization borrows from the deserializer where the format lends its input, so
     `CowBytes<'a>` is `Deserialize<'de>` for `'de: 'a` and is not `DeserializeOwned`
 - `CowBytes::new`, matching `Bytes::new`
+- `CowBytes::split_off`, `split_to`, `truncate` and `clear`, none of which copy
 - `Buf`, `IntoIterator` (owned and by reference), `FromIterator<u8>` and `From<Box<[u8]>>` impls
 - `PartialOrd<T>` for any `T: AsRef<[u8]>`, and reverse `PartialEq`/`PartialOrd` impls so that a
   `CowBytes` may appear on either side of a comparison
