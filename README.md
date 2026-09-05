@@ -25,22 +25,22 @@ This is useful for zero-copy I/O pipelines, where a buffer may be borrowed from 
 use cowbytes::CowBytes;
 
 // Borrowing does not allocate.
-let borrowed = CowBytes::from(&[1u8, 2, 3][..]);
+let borrowed: CowBytes<'_> = CowBytes::from(&[1u8, 2, 3][..]);
 
 // A `Vec` is adopted without copying.
-let shared = CowBytes::from(vec![1u8, 2, 3]);
+let shared: CowBytes<'_> = CowBytes::from(vec![1u8, 2, 3]);
 
 // Equality is by contents, not by variant.
 assert_eq!(borrowed, shared);
 
 // Slicing shared bytes keeps the same allocation.
-let sliced = shared.slice(1..3);
+let sliced: CowBytes<'_> = shared.slice(1..3);
 assert_eq!(sliced, [2u8, 3]);
 
 // `into_vec` hands the allocation back while it is unshared, rather than copying.
 let bytes = vec![1u8, 2, 3];
 let ptr = bytes.as_ptr();
-let owned = CowBytes::from(bytes).into_vec();
+let owned: Vec<u8> = CowBytes::from(bytes).into_vec();
 assert_eq!(owned.as_ptr(), ptr);
 ```
 
