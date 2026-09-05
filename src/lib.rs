@@ -439,6 +439,7 @@ impl<'de> serde::Deserialize<'de> for CowBytes<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec; // `vec!` is not in the prelude without `std`.
 
     #[test]
     fn equality_ignores_the_variant() {
