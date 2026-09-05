@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test (all features)
+        run: cargo test --all-features
+      - name: Test (no default features)
+        run: cargo test --no-default-features
+      - name: Test (no default features + serde)
+        run: cargo test --no-default-features --features serde
+
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Documentation
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps
+      - name: Package
+        run: cargo package
+
+  msrv:
+    name: MSRV (1.82)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.82.0
+      - name: Check (all features)
+        run: cargo check --all-features
+      - name: Check (no default features)
+        run: cargo check --no-default-features
+      - name: Check (no default features + serde)
+        run: cargo check --no-default-features --features serde
