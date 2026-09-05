@@ -120,21 +120,6 @@ impl<'a> CowBytes<'a> {
         self.as_slice().is_empty()
     }
 
-    /// Returns the bytes as a [`Vec`], copying only if they are borrowed.
-    #[must_use]
-    #[inline]
-    pub fn into_vec(self) -> Vec<u8> {
-        match self {
-            Self::Borrowed(bytes) => bytes.to_vec(),
-            // `try_into_mut` only succeeds if the buffer is not shared, so the bytes returned
-            // here are always unshared. This matters for callers that go on to mutate
-            // them through an `UnsafeCellSlice`.
-            Self::Shared(bytes) => bytes
-                .try_into_mut()
-                .map_or_else(|bytes| bytes.to_vec(), Into::into),
-        }
-    }
-
     /// Returns a subslice of the bytes without copying.
     ///
     /// A subsequent [`into_vec`](CowBytes::into_vec) may have to shift the bytes to the
@@ -230,34 +215,6 @@ impl<'a> CowBytes<'a> {
         self.truncate(0);
     }
 
-    /// Converts into [`Bytes`], copying only if the bytes are borrowed.
-    ///
-    /// # Examples
-    /// ```
-    /// # use bytes::Bytes;
-    /// # use cowbytes::CowBytes;
-    /// let bytes = CowBytes::from(&[1u8, 2, 3][..]);
-    /// assert_eq!(bytes.into_bytes(), Bytes::from_static(&[1, 2, 3]));
-    /// ```
-    #[must_use]
-    #[inline]
-    pub fn into_bytes(self) -> Bytes {
-        Bytes::from(self)
-    }
-
-    /// Convert into a [`CowBytes<'static>`], copying only if the bytes are borrowed.
-    ///
-    /// Unlike [`into_vec`](CowBytes::into_vec), shared bytes are retained as-is rather
-    /// than copied into a [`Vec`].
-    #[must_use]
-    #[inline]
-    pub fn into_static(self) -> CowBytes<'static> {
-        match self {
-            Self::Borrowed(bytes) => CowBytes::Shared(Bytes::copy_from_slice(bytes)),
-            Self::Shared(bytes) => CowBytes::Shared(bytes),
-        }
-    }
-
     /// Applies `f` to the bytes, copying them first if they are borrowed or shared, and returns
     /// whatever `f` returns.
     ///
@@ -287,6 +244,49 @@ impl<'a> CowBytes<'a> {
         let result = f(&mut bytes);
         *self = Self::Shared(Bytes::from(bytes));
         result
+    }
+
+    /// Converts into [`Bytes`], copying only if the bytes are borrowed.
+    ///
+    /// # Examples
+    /// ```
+    /// # use bytes::Bytes;
+    /// # use cowbytes::CowBytes;
+    /// let bytes = CowBytes::from(&[1u8, 2, 3][..]);
+    /// assert_eq!(bytes.into_bytes(), Bytes::from_static(&[1, 2, 3]));
+    /// ```
+    #[must_use]
+    #[inline]
+    pub fn into_bytes(self) -> Bytes {
+        Bytes::from(self)
+    }
+
+    /// Convert into a [`CowBytes<'static>`], copying only if the bytes are borrowed.
+    ///
+    /// Unlike [`into_vec`](CowBytes::into_vec), shared bytes are retained as-is rather
+    /// than copied into a [`Vec`].
+    #[must_use]
+    #[inline]
+    pub fn into_static(self) -> CowBytes<'static> {
+        match self {
+            Self::Borrowed(bytes) => CowBytes::Shared(Bytes::copy_from_slice(bytes)),
+            Self::Shared(bytes) => CowBytes::Shared(bytes),
+        }
+    }
+
+    /// Returns the bytes as a [`Vec`], copying only if they are borrowed.
+    #[must_use]
+    #[inline]
+    pub fn into_vec(self) -> Vec<u8> {
+        match self {
+            Self::Borrowed(bytes) => bytes.to_vec(),
+            // `try_into_mut` only succeeds if the buffer is not shared, so the bytes returned
+            // here are always unshared. This matters for callers that go on to mutate
+            // them through an `UnsafeCellSlice`.
+            Self::Shared(bytes) => bytes
+                .try_into_mut()
+                .map_or_else(|bytes| bytes.to_vec(), Into::into),
+        }
     }
 }
 
