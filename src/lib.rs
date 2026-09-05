@@ -60,7 +60,7 @@ use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::ops::{Deref, RangeBounds};
 
-pub use bytes::{Buf, Bytes};
+use bytes::Bytes;
 
 /// A [`Cow`](alloc::borrow::Cow) whose non-borrowed variant is a reference counted [`Bytes`]
 /// rather than an owned [`Vec<u8>`].
@@ -234,7 +234,8 @@ impl<'a> CowBytes<'a> {
     ///
     /// # Examples
     /// ```
-    /// # use cowbytes::{Bytes, CowBytes};
+    /// # use bytes::Bytes;
+    /// # use cowbytes::CowBytes;
     /// let bytes = CowBytes::from(&[1u8, 2, 3][..]);
     /// assert_eq!(bytes.into_bytes(), Bytes::from_static(&[1, 2, 3]));
     /// ```

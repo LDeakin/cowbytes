@@ -1,6 +1,7 @@
 //! Tests for comparison and hashing.
 
-use cowbytes::{Bytes, CowBytes};
+use bytes::Bytes;
+use cowbytes::CowBytes;
 
 #[test]
 fn equality_ignores_the_variant() {

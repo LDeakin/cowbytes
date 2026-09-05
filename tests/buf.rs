@@ -1,6 +1,7 @@
 //! Tests for the `Buf` implementation.
 
-use cowbytes::{Buf, CowBytes};
+use bytes::Buf;
+use cowbytes::CowBytes;
 
 #[test]
 fn buf_advance_works_on_both_variants() {
