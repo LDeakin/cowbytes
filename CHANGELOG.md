@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased](https://github.com/LDeakin/cowbytes/compare/v0.1.0...HEAD)
 
+### Added
+- Add trusted publishing
+
 ## [0.1.0](https://github.com/LDeakin/cowbytes/compare/v0.1.0) - 2026-09-05
 
 ### Added
