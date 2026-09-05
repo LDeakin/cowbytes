@@ -24,30 +24,31 @@
 //!
 //! # Comparison
 //!
-//! A tick marks an API of `&[u8]` or [`Bytes`] that [`CowBytes`] provides. A blank marks one it
-//! does not provide, or one that does not apply to that type.
+//! For each API of `&[u8]` and [`Bytes`]: ✓ means [`CowBytes`] provides it, ✗ means that type
+//! has it but [`CowBytes`] does not, and a blank means it does not apply to that type.
 //!
 //! | Method / trait | `&[u8]` | [`Bytes`] |
 //! | --- | :-: | :-: |
 //! | [`len`](CowBytes::len) / [`is_empty`](CowBytes::is_empty) | ✓ | ✓ |
-//! | [`new`](CowBytes::new) / [`from_static`](CowBytes::from_static) | | ✓ |
-//! | [`slice`](CowBytes::slice) / range indexing | ✓ | ✓ |
-//! | `split_off` / `split_to` / `truncate` / `clear` | | |
-//! | `copy_from_slice` / `slice_ref` / `from_owner` | | |
-//! | `is_unique` / `try_into_mut` | | |
+//! | range indexing / [`slice`](CowBytes::slice) | ✓ | ✓ |
 //! | [`Deref`] to `[u8]` | ✓ | ✓ |
 //! | [`AsRef`] / [`Borrow`] as `[u8]` | ✓ | ✓ |
 //! | [`Clone`] / [`Debug`](core::fmt::Debug) / [`Default`] | ✓ | ✓ |
 //! | [`PartialEq`] / [`Eq`] / [`PartialOrd`] / [`Ord`] / [`Hash`] | ✓ | ✓ |
 //! | [`From`] / [`Into`] conversions | ✓ | ✓ |
 //! | [`IntoIterator`] | ✓ | ✓ |
-//! | [`FromIterator<u8>`](FromIterator) | | ✓ |
 //! | [`Buf`] | ✓ | ✓ |
 //! | `Serialize` / `Deserialize` (`serde` feature) | ✓ | ✓ |
-//! | `AsMut<[u8]>` / [`DerefMut`](core::ops::DerefMut) | | |
+//! | [`new`](CowBytes::new) / [`from_static`](CowBytes::from_static) | | ✓ |
+//! | [`FromIterator<u8>`](FromIterator) | | ✓ |
+//! | `split_off` | ✗ | ✗ |
+//! | `split_to` / `truncate` / `clear` | | ✗ |
+//! | `copy_from_slice` / `slice_ref` / `from_owner` | | ✗ |
+//! | `is_unique` / `try_into_mut` | | ✗ |
 //!
 //! Read-only slice methods (`iter`, `get`, `to_vec`, `split_at`, indexing, …) are reachable
-//! through [`Deref`]. Neither `&[u8]` nor [`Bytes`] offers in-place mutable access, so
+//! through [`Deref`], so the ✗ rows are the ones that would have to return a [`CowBytes`] or
+//! mutate one in place. Neither `&[u8]` nor [`Bytes`] offers mutable access to its contents, so
 //! [`CowBytes`] exposes [`mutate`](CowBytes::mutate) and [`try_mutate`](CowBytes::try_mutate)
 //! instead, which copy first.
 //!
