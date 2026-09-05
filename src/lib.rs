@@ -15,17 +15,17 @@
 //! # use cowbytes::CowBytes;
 //! // Borrowing does not allocate.
 //! let borrowed: CowBytes<'_> = CowBytes::from(&[1u8, 2, 3][..]);
-//! 
+//!
 //! // A `Vec` is adopted without copying.
 //! let shared: CowBytes<'_> = CowBytes::from(vec![1u8, 2, 3]);
-//! 
+//!
 //! // Equality is by contents, not by variant.
 //! assert_eq!(borrowed, shared);
-//! 
+//!
 //! // Slicing shared bytes keeps the same allocation.
 //! let sliced: CowBytes<'_> = shared.slice(1..3);
 //! assert_eq!(sliced, [2u8, 3]);
-//! 
+//!
 //! // `into_vec` hands the allocation back while it is unshared, rather than copying.
 //! let bytes = vec![1u8, 2, 3];
 //! let ptr = bytes.as_ptr();
