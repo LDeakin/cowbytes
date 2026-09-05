@@ -44,7 +44,7 @@ assert_eq!(owned.as_ptr(), ptr);
 ## Feature flags
 
 - `std` *(default)* — enables `bytes/std`. Disable for `no_std` (requires `alloc`).
-- `serde` — implements `Serialize` and `Deserialize`.
+- `serde` — implements `Serialize` and `Deserialize`. Add `#[serde(borrow)]` to struct fields holding `CowBytes<'a>` to allow zero-copy deserialization from input data.
 
 ## Licence
 
