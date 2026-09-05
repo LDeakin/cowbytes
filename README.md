@@ -3,7 +3,7 @@
 [![crates.io](https://img.shields.io/crates/v/cowbytes.svg)](https://crates.io/crates/cowbytes)
 [![docs.rs](https://docs.rs/cowbytes/badge.svg)](https://docs.rs/cowbytes)
 
-A clone-on-write bytes type whose non-borrowed variant is [`bytes::Bytes`].
+A clone-on-write bytes type whose non-borrowed variant is [`bytes::Bytes`](https://docs.rs/bytes/latest/bytes/struct.Bytes.html).
 
 ```text
 pub enum CowBytes<'a> {
