@@ -10,7 +10,6 @@ repository = "https://github.com/LDeakin/cowbytes"
 license = "MIT OR Apache-2.0"
 keywords = ["bytes", "cow", "zero-copy", "buffer", "no_std"]
 categories = ["data-structures", "memory-management", "no-std"]
-readme = "README.md"
 
 [features]
 default = ["std"]
