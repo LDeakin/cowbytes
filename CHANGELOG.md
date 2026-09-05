@@ -8,6 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `CowBytes`, a clone-on-write bytes type whose owned variant is `bytes::Bytes`
+- `CowBytes`, a clone-on-write bytes type whose non-borrowed variant is `bytes::Bytes`
 - `no_std` support via the default-on `std` feature
 - `serde` support behind the `serde` feature

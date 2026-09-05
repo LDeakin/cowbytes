@@ -50,7 +50,7 @@
 //! through [`Deref`]. The two ✗ rows are [`Bytes`] APIs that do not generalise to a borrow:
 //! its constructors are covered by [`From`], [`from_static`](CowBytes::from_static) and
 //! [`into_static`](CowBytes::into_static), and its reference count introspection is
-//! meaningless for the borrowed variant — [`into_vec`](CowBytes::into_vec) already yields a
+//! meaningless for the borrowed variant — [`into_vec`](CowBytes::into_vec) already yields an
 //! unshared buffer either way.
 //!
 //! Neither `&[u8]` nor [`Bytes`] offers mutable access to its contents, so [`CowBytes`] exposes
