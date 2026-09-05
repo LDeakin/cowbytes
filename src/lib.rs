@@ -79,7 +79,7 @@ pub enum CowBytes<'a> {
     Shared(Bytes),
 }
 
-impl<'a> CowBytes<'a> {
+impl CowBytes<'_> {
     /// Creates an empty [`CowBytes`] without allocating.
     #[must_use]
     #[inline]
@@ -138,13 +138,13 @@ impl<'a> CowBytes<'a> {
     /// ```
     #[must_use]
     #[inline]
-    pub fn slice(&self, range: impl RangeBounds<usize>) -> CowBytes<'a> {
+    pub fn slice(&self, range: impl RangeBounds<usize>) -> Self {
         // `(Bound, Bound)` implements both `RangeBounds` and `SliceIndex`, so the same
         // resolved range serves the borrowed and the shared arm.
         let range = (range.start_bound().cloned(), range.end_bound().cloned());
         match self {
-            Self::Borrowed(bytes) => CowBytes::Borrowed(&bytes[range]),
-            Self::Shared(bytes) => CowBytes::Shared(bytes.slice(range)),
+            Self::Borrowed(bytes) => Self::Borrowed(&bytes[range]),
+            Self::Shared(bytes) => Self::Shared(bytes.slice(range)),
         }
     }
 
@@ -165,14 +165,14 @@ impl<'a> CowBytes<'a> {
     /// ```
     #[must_use = "use `truncate` to discard the bytes beyond `at`"]
     #[inline]
-    pub fn split_off(&mut self, at: usize) -> CowBytes<'a> {
+    pub fn split_off(&mut self, at: usize) -> Self {
         match self {
             Self::Borrowed(bytes) => {
                 let (head, tail) = bytes.split_at(at);
                 *bytes = head;
-                CowBytes::Borrowed(tail)
+                Self::Borrowed(tail)
             }
-            Self::Shared(bytes) => CowBytes::Shared(bytes.split_off(at)),
+            Self::Shared(bytes) => Self::Shared(bytes.split_off(at)),
         }
     }
 
@@ -184,14 +184,14 @@ impl<'a> CowBytes<'a> {
     /// Panics if `at > len`.
     #[must_use = "use `advance` from `Buf` to discard the bytes before `at`"]
     #[inline]
-    pub fn split_to(&mut self, at: usize) -> CowBytes<'a> {
+    pub fn split_to(&mut self, at: usize) -> Self {
         match self {
             Self::Borrowed(bytes) => {
                 let (head, tail) = bytes.split_at(at);
                 *bytes = tail;
-                CowBytes::Borrowed(head)
+                Self::Borrowed(head)
             }
-            Self::Shared(bytes) => CowBytes::Shared(bytes.split_to(at)),
+            Self::Shared(bytes) => Self::Shared(bytes.split_to(at)),
         }
     }
 

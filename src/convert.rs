@@ -113,7 +113,7 @@ impl From<CowBytes<'_>> for Bytes {
     #[inline]
     fn from(bytes: CowBytes<'_>) -> Self {
         match bytes {
-            CowBytes::Borrowed(bytes) => Bytes::copy_from_slice(bytes),
+            CowBytes::Borrowed(bytes) => Self::copy_from_slice(bytes),
             CowBytes::Shared(bytes) => bytes,
         }
     }
