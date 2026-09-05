@@ -18,3 +18,31 @@ fn boxed_slice_is_adopted_without_copying() {
     let ptr = bytes.as_ptr() as usize;
     assert_eq!(CowBytes::from(bytes).as_ptr() as usize, ptr);
 }
+
+#[test]
+fn cow_str_conversions() {
+    let borrowed_cow: Cow<str> = Cow::Borrowed("hello");
+    let bytes = CowBytes::from(borrowed_cow);
+    assert!(matches!(bytes, CowBytes::Borrowed(_)));
+    assert_eq!(bytes, "hello");
+
+    let owned_cow: Cow<str> = Cow::Owned(String::from("world"));
+    let bytes = CowBytes::from(owned_cow);
+    assert!(matches!(bytes, CowBytes::Shared(_)));
+    assert_eq!(bytes, "world");
+}
+
+#[test]
+fn string_reference_conversion() {
+    let s = String::from("hello");
+    let bytes = CowBytes::from(&s);
+    assert!(matches!(bytes, CowBytes::Borrowed(_)));
+    assert_eq!(bytes, "hello");
+}
+
+#[test]
+fn into_boxed_slice() {
+    let bytes = CowBytes::from(vec![1u8, 2, 3]);
+    let boxed: Box<[u8]> = Box::from(bytes);
+    assert_eq!(&*boxed, &[1u8, 2, 3]);
+}

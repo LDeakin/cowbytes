@@ -37,6 +37,13 @@ impl<'a> From<&'a str> for CowBytes<'a> {
     }
 }
 
+impl<'a> From<&'a String> for CowBytes<'a> {
+    #[inline]
+    fn from(bytes: &'a String) -> Self {
+        Self::Borrowed(bytes.as_bytes())
+    }
+}
+
 impl From<String> for CowBytes<'_> {
     #[inline]
     fn from(bytes: String) -> Self {
@@ -64,6 +71,16 @@ impl<'a> From<Cow<'a, [u8]>> for CowBytes<'a> {
         match bytes {
             Cow::Borrowed(bytes) => Self::Borrowed(bytes),
             Cow::Owned(bytes) => Self::Shared(Bytes::from(bytes)),
+        }
+    }
+}
+
+impl<'a> From<Cow<'a, str>> for CowBytes<'a> {
+    #[inline]
+    fn from(bytes: Cow<'a, str>) -> Self {
+        match bytes {
+            Cow::Borrowed(bytes) => Self::Borrowed(bytes.as_bytes()),
+            Cow::Owned(bytes) => Self::Shared(Bytes::from(bytes.into_bytes())),
         }
     }
 }
@@ -106,5 +123,12 @@ impl From<CowBytes<'_>> for Vec<u8> {
     #[inline]
     fn from(bytes: CowBytes<'_>) -> Self {
         bytes.into_vec()
+    }
+}
+
+impl From<CowBytes<'_>> for Box<[u8]> {
+    #[inline]
+    fn from(bytes: CowBytes<'_>) -> Self {
+        bytes.into_vec().into_boxed_slice()
     }
 }
