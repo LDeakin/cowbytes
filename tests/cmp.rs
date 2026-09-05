@@ -30,9 +30,17 @@ fn comparisons_work_from_either_side() {
     assert_eq!(vec![1u8, 2, 3], bytes);
     assert_eq!(bytes, vec![1u8, 2, 3]);
     assert_eq!([1u8, 2, 3], bytes);
+    assert_eq!(&[1u8, 2, 3], bytes);
     assert_eq!(&[1u8, 2, 3][..], bytes);
+    assert_eq!(b"\x01\x02\x03", bytes);
+    assert_eq!(&bytes, bytes);
+    let v = vec![1u8, 2, 3];
+    assert_eq!(&v, bytes);
+    let b = Bytes::from_static(&[1u8, 2, 3]);
+    assert_eq!(&b, bytes);
     assert_eq!(Bytes::from_static(&[1u8, 2, 3]), bytes);
     assert!(vec![1u8, 2] < bytes);
+    assert!(b"\x01\x02" < bytes);
     assert!(bytes > Bytes::from_static(&[1u8, 2]));
 }
 

@@ -63,10 +63,16 @@ impl_reverse_cmp!(
     str,
     &str,
     Vec<u8>,
+    &Vec<u8>,
     String,
+    &String,
     Bytes,
+    &Bytes,
     bytes::BytesMut,
+    &bytes::BytesMut,
     Cow<'_, [u8]>,
+    &Cow<'_, [u8]>,
+    &CowBytes<'_>,
 );
 
 impl<const N: usize> PartialEq<CowBytes<'_>> for [u8; N] {
@@ -77,6 +83,20 @@ impl<const N: usize> PartialEq<CowBytes<'_>> for [u8; N] {
 }
 
 impl<const N: usize> PartialOrd<CowBytes<'_>> for [u8; N] {
+    #[inline]
+    fn partial_cmp(&self, other: &CowBytes<'_>) -> Option<Ordering> {
+        Some(self.as_slice().cmp(other.as_slice()))
+    }
+}
+
+impl<const N: usize> PartialEq<CowBytes<'_>> for &[u8; N] {
+    #[inline]
+    fn eq(&self, other: &CowBytes<'_>) -> bool {
+        self.as_slice() == other.as_slice()
+    }
+}
+
+impl<const N: usize> PartialOrd<CowBytes<'_>> for &[u8; N] {
     #[inline]
     fn partial_cmp(&self, other: &CowBytes<'_>) -> Option<Ordering> {
         Some(self.as_slice().cmp(other.as_slice()))
