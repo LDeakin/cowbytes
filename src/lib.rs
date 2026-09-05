@@ -1,4 +1,4 @@
-//! A clone-on-write bytes type whose non-borrowed variant is [`Bytes`].
+//! Like [`Cow<[u8]>`](alloc::borrow::Cow), but with reference-counted [`Bytes`] instead of an owned [`Vec<u8>`].
 //!
 //! ```rust,ignore
 //! pub enum CowBytes<'a> {
@@ -63,8 +63,7 @@ use core::ops::{Deref, RangeBounds};
 
 use bytes::Bytes;
 
-/// A [`Cow`](alloc::borrow::Cow) whose non-borrowed variant is a reference counted [`Bytes`]
-/// rather than an owned [`Vec<u8>`].
+/// Like [`Cow<[u8]>`](alloc::borrow::Cow), but with reference-counted [`Bytes`] instead of an owned [`Vec<u8>`].
 ///
 /// See the [crate documentation](crate) for an overview.
 #[derive(Clone, Debug)]

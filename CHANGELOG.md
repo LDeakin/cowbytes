@@ -13,6 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0](https://github.com/LDeakin/cowbytes/compare/v0.1.0) - 2026-09-05
 
 ### Added
-- `CowBytes`, a clone-on-write bytes type whose non-borrowed variant is `bytes::Bytes`
+- `CowBytes`, like `Cow<[u8]>`, but with reference-counted `bytes::Bytes` instead of an owned `Vec<u8>`
   - `no_std` support via the default-on `std` feature
   - `serde` support behind the `serde` feature
