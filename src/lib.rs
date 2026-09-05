@@ -1,9 +1,9 @@
-//! A clone-on-write bytes type whose owned variant is [`Bytes`].
+//! A clone-on-write bytes type whose non-borrowed variant is [`Bytes`].
 //!
 //! [`CowBytes`] is a [`Cow`]-like enum that is either a borrowed `&[u8]` or a reference counted
 //! [`Bytes`]. It sits between the two types in the standard toolbox:
 //!
-//! - Unlike [`Cow<[u8]>`](Cow), whose owned side is a [`Vec<u8>`], cloning and slicing an owned
+//! - Unlike [`Cow<[u8]>`](Cow), whose owned side is a [`Vec<u8>`], cloning and slicing a shared
 //!   value are reference count operations rather than copies.
 //! - Unlike [`Bytes`], which can only borrow `&'static` data, an arbitrary slice can be held
 //!   without copying it, at the cost of a lifetime.
@@ -13,12 +13,12 @@
 //! // Borrowed: no allocation.
 //! let borrowed = CowBytes::from(&[1u8, 2, 3][..]);
 //!
-//! // A `Vec` is adopted without copying, and handed back by `into_vec` when unshared.
-//! let owned = CowBytes::from(vec![1u8, 2, 3]);
-//! assert_eq!(borrowed, owned);
+//! // A `Vec` is adopted without copying, and handed back by `into_vec` while unshared.
+//! let shared = CowBytes::from(vec![1u8, 2, 3]);
+//! assert_eq!(borrowed, shared);
 //!
 //! // Slicing shared bytes keeps the same allocation.
-//! let sliced = owned.slice(1..3);
+//! let sliced = shared.slice(1..3);
 //! assert_eq!(sliced, [2u8, 3]);
 //! ```
 //!
@@ -51,7 +51,7 @@
 //! its constructors are covered by [`From`], [`from_static`](CowBytes::from_static) and
 //! [`into_static`](CowBytes::into_static), and its reference count introspection is
 //! meaningless for the borrowed variant — [`into_vec`](CowBytes::into_vec) already yields a
-//! uniquely owned buffer either way.
+//! unshared buffer either way.
 //!
 //! Neither `&[u8]` nor [`Bytes`] offers mutable access to its contents, so [`CowBytes`] exposes
 //! [`with_mut`](CowBytes::with_mut) instead, which copies first.
@@ -85,7 +85,8 @@ use core::ops::{Deref, RangeBounds};
 
 pub use bytes::{Buf, Bytes};
 
-/// A [`Cow`] whose owned variant is [`Bytes`] rather than [`Vec<u8>`].
+/// A [`Cow`] whose non-borrowed variant is a reference counted [`Bytes`] rather than an owned
+/// [`Vec<u8>`].
 ///
 /// See the [crate documentation](crate) for an overview.
 #[derive(Clone, Debug)]
@@ -94,9 +95,9 @@ pub enum CowBytes<'a> {
     Borrowed(&'a [u8]),
     /// Bytes shared with a reference counted buffer.
     ///
-    /// Cloning and slicing these bytes does not copy the underlying buffer. Owned bytes are
-    /// represented here too: [`Bytes::from`] takes a [`Vec`] without copying, and
-    /// [`into_vec`](CowBytes::into_vec) hands the allocation back when it is unshared.
+    /// Cloning and slicing these bytes does not copy the underlying buffer. A [`Vec`] is
+    /// represented here too: [`Bytes::from`] adopts one without copying, and
+    /// [`into_vec`](CowBytes::into_vec) hands the allocation back while it is unshared.
     Shared(Bytes),
 }
 
@@ -149,7 +150,7 @@ impl<'a> CowBytes<'a> {
         match self {
             Self::Borrowed(bytes) => bytes.to_vec(),
             // `try_into_mut` only succeeds if the buffer is not shared, so the bytes returned
-            // here are always uniquely owned. This matters for callers that go on to mutate
+            // here are always unshared. This matters for callers that go on to mutate
             // them through an `UnsafeCellSlice`.
             Self::Shared(bytes) => bytes
                 .try_into_mut()
@@ -289,7 +290,7 @@ impl<'a> CowBytes<'a> {
     /// ```
     #[inline]
     pub fn with_mut<R>(&mut self, f: impl FnOnce(&mut [u8]) -> R) -> R {
-        // `into_vec` yields a uniquely owned buffer, so the bytes are safe to mutate.
+        // `into_vec` yields an unshared buffer, so the bytes are safe to mutate.
         let mut bytes = core::mem::replace(self, Self::Borrowed(&[])).into_vec();
         let result = f(&mut bytes);
         *self = Self::Shared(Bytes::from(bytes));
@@ -652,9 +653,9 @@ mod tests {
     fn equality_ignores_the_variant() {
         // A derived `PartialEq` would compare variants, not contents.
         let borrowed = CowBytes::Borrowed(&[1u8, 2, 3]);
-        let owned = CowBytes::from(vec![1u8, 2, 3]);
-        assert_eq!(borrowed, owned);
-        assert_eq!(owned, borrowed);
+        let shared = CowBytes::from(vec![1u8, 2, 3]);
+        assert_eq!(borrowed, shared);
+        assert_eq!(shared, borrowed);
         assert_ne!(borrowed, CowBytes::from(vec![1u8, 2, 4]));
     }
 
@@ -675,7 +676,7 @@ mod tests {
     }
 
     #[test]
-    fn slice_does_not_copy_owned_bytes() {
+    fn slice_does_not_copy_shared_bytes() {
         // Slicing keeps the same allocation rather than reallocating.
         let bytes = vec![1u8, 2, 3, 4];
         let ptr = bytes.as_ptr() as usize;
@@ -798,9 +799,9 @@ mod tests {
         use core::hash::BuildHasher;
         let state = std::collections::hash_map::RandomState::new();
         let borrowed = CowBytes::Borrowed(&[1u8, 2, 3]);
-        let owned = CowBytes::from(vec![1u8, 2, 3]);
-        assert_eq!(borrowed, owned);
-        assert_eq!(state.hash_one(&borrowed), state.hash_one(&owned));
+        let shared = CowBytes::from(vec![1u8, 2, 3]);
+        assert_eq!(borrowed, shared);
+        assert_eq!(state.hash_one(&borrowed), state.hash_one(&shared));
     }
 
     #[test]

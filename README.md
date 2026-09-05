@@ -3,7 +3,7 @@
 [![crates.io](https://img.shields.io/crates/v/cowbytes.svg)](https://crates.io/crates/cowbytes)
 [![docs.rs](https://docs.rs/cowbytes/badge.svg)](https://docs.rs/cowbytes)
 
-A clone-on-write bytes type whose owned variant is [`bytes::Bytes`].
+A clone-on-write bytes type whose non-borrowed variant is [`bytes::Bytes`].
 
 ```text
 pub enum CowBytes<'a> {
@@ -14,7 +14,7 @@ pub enum CowBytes<'a> {
 
 `CowBytes` sits between the two types in the standard toolbox:
 
-- Unlike `Cow<'a, [u8]>`, whose owned side is a `Vec<u8>`, **cloning and slicing an owned value are
+- Unlike `Cow<'a, [u8]>`, whose owned side is a `Vec<u8>`, **cloning and slicing a shared value are
   reference count operations rather than copies**.
 - Unlike `Bytes`, which can only borrow `&'static` data, **an arbitrary slice can be held without
   copying it**, at the cost of a lifetime.
@@ -31,16 +31,16 @@ use cowbytes::CowBytes;
 let borrowed = CowBytes::from(&[1u8, 2, 3][..]);
 
 // A `Vec` is adopted without copying.
-let owned = CowBytes::from(vec![1u8, 2, 3]);
+let shared = CowBytes::from(vec![1u8, 2, 3]);
 
 // Equality is by contents, not by variant.
-assert_eq!(borrowed, owned);
+assert_eq!(borrowed, shared);
 
 // Slicing shared bytes keeps the same allocation.
-let sliced = owned.slice(1..3);
+let sliced = shared.slice(1..3);
 assert_eq!(sliced, [2u8, 3]);
 
-// `into_vec` hands the allocation back when it is unshared, rather than copying.
+// `into_vec` hands the allocation back while it is unshared, rather than copying.
 let bytes = vec![1u8, 2, 3];
 let ptr = bytes.as_ptr();
 assert_eq!(CowBytes::from(bytes).into_vec().as_ptr(), ptr);
