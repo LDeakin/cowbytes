@@ -31,6 +31,7 @@
 extern crate alloc;
 
 use alloc::borrow::Cow;
+use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::borrow::Borrow;
@@ -369,6 +370,13 @@ impl From<Vec<u8>> for CowBytes<'_> {
     }
 }
 
+impl From<Box<[u8]>> for CowBytes<'_> {
+    #[inline]
+    fn from(bytes: Box<[u8]>) -> Self {
+        Self::Shared(Bytes::from(bytes))
+    }
+}
+
 impl<'a> From<Cow<'a, [u8]>> for CowBytes<'a> {
     #[inline]
     fn from(bytes: Cow<'a, [u8]>) -> Self {
@@ -417,6 +425,33 @@ impl From<CowBytes<'_>> for Vec<u8> {
     #[inline]
     fn from(bytes: CowBytes<'_>) -> Self {
         bytes.into_owned()
+    }
+}
+
+impl IntoIterator for CowBytes<'_> {
+    type Item = u8;
+    type IntoIter = bytes::buf::IntoIter<Self>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        bytes::buf::IntoIter::new(self)
+    }
+}
+
+impl<'b> IntoIterator for &'b CowBytes<'_> {
+    type Item = &'b u8;
+    type IntoIter = core::slice::Iter<'b, u8>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.as_slice().iter()
+    }
+}
+
+impl FromIterator<u8> for CowBytes<'_> {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = u8>>(iter: T) -> Self {
+        Self::Shared(Bytes::from_iter(iter))
     }
 }
 
@@ -580,6 +615,21 @@ mod tests {
         assert_eq!(Bytes::from_static(&[1u8, 2, 3]), bytes);
         assert!(vec![1u8, 2] < bytes);
         assert!(bytes > Bytes::from_static(&[1u8, 2]));
+    }
+
+    #[test]
+    fn iterates_by_value_and_by_reference() {
+        let bytes = CowBytes::from(vec![1u8, 2, 3]);
+        assert_eq!((&bytes).into_iter().copied().collect::<Vec<u8>>(), [1, 2, 3]);
+        assert_eq!(bytes.into_iter().collect::<Vec<u8>>(), [1, 2, 3]);
+        assert_eq!([1u8, 2, 3].into_iter().collect::<CowBytes>(), [1u8, 2, 3]);
+    }
+
+    #[test]
+    fn boxed_slice_is_adopted_without_copying() {
+        let bytes = vec![1u8, 2, 3].into_boxed_slice();
+        let ptr = bytes.as_ptr() as usize;
+        assert_eq!(CowBytes::from(bytes).as_ptr() as usize, ptr);
     }
 
     #[test]
