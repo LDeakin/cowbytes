@@ -53,10 +53,18 @@
 //!
 //! # Feature flags
 //! - `std` (default): enables `bytes/std`. Disable for `no_std` (requires `alloc`).
-//! - `serde`: implements [`Serialize`](serde::Serialize) and [`Deserialize`](serde::Deserialize).
-//!   Deserializing borrows from the deserializer where the format allows, so a [`CowBytes`]
-//!   field of a derived struct needs `#[serde(borrow)]`.
-
+// The `serde` bullet is written twice so that it only links to `serde` when that crate is
+// actually a dependency, which keeps `cargo doc` free of unresolved links either way.
+#![cfg_attr(
+    feature = "serde",
+    doc = "- `serde`: implements [`Serialize`](serde::Serialize) and [`Deserialize`](serde::Deserialize)."
+)]
+#![cfg_attr(
+    not(feature = "serde"),
+    doc = "- `serde`: implements `Serialize` and `Deserialize`."
+)]
+#![doc = "  Deserializing borrows from the deserializer where the format allows, so a"]
+#![doc = "  [`CowBytes`] field of a derived struct needs `#[serde(borrow)]`."]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
