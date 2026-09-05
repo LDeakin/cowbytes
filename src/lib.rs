@@ -36,7 +36,7 @@ use core::borrow::Borrow;
 use core::hash::{Hash, Hasher};
 use core::ops::{Deref, RangeBounds};
 
-pub use bytes::Bytes;
+pub use bytes::{Buf, Bytes};
 
 /// A [`Cow`] whose owned variant is [`Bytes`] rather than [`Vec<u8>`].
 ///
@@ -206,6 +206,41 @@ impl Borrow<[u8]> for CowBytes<'_> {
     #[inline]
     fn borrow(&self) -> &[u8] {
         self.as_slice()
+    }
+}
+
+/// Reads the bytes as a [`Buf`], so a [`CowBytes`] can be handed to buffer-generic code without
+/// first copying a borrow into a [`Bytes`].
+impl Buf for CowBytes<'_> {
+    #[inline]
+    fn remaining(&self) -> usize {
+        self.len()
+    }
+
+    #[inline]
+    fn chunk(&self) -> &[u8] {
+        self.as_slice()
+    }
+
+    #[inline]
+    fn advance(&mut self, cnt: usize) {
+        match self {
+            Self::Borrowed(bytes) => *bytes = &bytes[cnt..],
+            Self::Shared(bytes) => bytes.advance(cnt),
+        }
+    }
+
+    #[inline]
+    fn copy_to_bytes(&mut self, len: usize) -> Bytes {
+        match self {
+            // Only a borrow has to be copied; the default implementation would copy either.
+            Self::Borrowed(bytes) => {
+                let (head, tail) = bytes.split_at(len);
+                *bytes = tail;
+                Bytes::copy_from_slice(head)
+            }
+            Self::Shared(bytes) => bytes.copy_to_bytes(len),
+        }
     }
 }
 
@@ -398,6 +433,30 @@ mod tests {
         assert_eq!(bytes.slice(1..=2), [2u8, 3]);
         // Slicing borrows rather than consumes, so the original is still usable.
         assert_eq!(bytes.len(), 4);
+    }
+
+    #[test]
+    fn buf_advance_works_on_both_variants() {
+        let mut borrowed = CowBytes::Borrowed(&[1u8, 2, 3, 4]);
+        borrowed.advance(2);
+        assert_eq!(borrowed.remaining(), 2);
+        assert_eq!(borrowed.chunk(), [3u8, 4]);
+
+        let mut shared = CowBytes::from(vec![1u8, 2, 3, 4]);
+        shared.advance(2);
+        assert_eq!(shared.remaining(), 2);
+        assert_eq!(shared.chunk(), [3u8, 4]);
+    }
+
+    #[test]
+    fn buf_copy_to_bytes_does_not_copy_shared_bytes() {
+        let bytes = vec![1u8, 2, 3, 4];
+        let ptr = bytes.as_ptr() as usize;
+        let mut shared = CowBytes::from(bytes);
+        let taken = shared.copy_to_bytes(2);
+        assert_eq!(&taken[..], &[1u8, 2][..]);
+        assert_eq!(taken.as_ptr() as usize, ptr);
+        assert_eq!(shared, [3u8, 4]);
     }
 
     #[test]
