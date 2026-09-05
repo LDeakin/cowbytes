@@ -45,6 +45,7 @@
 )]
 #![doc = "  Add `#[serde(borrow)]` to struct fields holding `CowBytes<'a>` to allow"]
 #![doc = "  zero-copy deserialization from input data."]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;

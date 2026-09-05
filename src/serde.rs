@@ -7,6 +7,7 @@ use bytes::Bytes;
 
 use crate::CowBytes;
 
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl ::serde::Serialize for CowBytes<'_> {
     fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_bytes(self.as_slice())
@@ -19,6 +20,7 @@ impl ::serde::Serialize for CowBytes<'_> {
 /// only for `'de: 'a`, and so is not [`DeserializeOwned`](::serde::de::DeserializeOwned). A
 /// `CowBytes` field of a derived struct therefore needs `#[serde(borrow)]`, and formats that do
 /// not lend their input (such as `from_reader`) cannot produce one.
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de: 'a, 'a> ::serde::Deserialize<'de> for CowBytes<'a> {
     fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         struct CowBytesVisitor<'a>(core::marker::PhantomData<&'a [u8]>);
