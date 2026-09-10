@@ -37,11 +37,11 @@ jobs:
         run: cargo package
 
   msrv:
-    name: MSRV (1.82)
+    name: MSRV (1.60)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.82.0
+      - uses: dtolnay/rust-toolchain@1.60.0
       - name: Check (all features)
         run: cargo check --all-features
       - name: Check (no default features)
